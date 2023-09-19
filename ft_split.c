@@ -3,120 +3,95 @@
 /*                                                        :::      ::::::::   */
 /*   ft_split.c                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: guortun- <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: guortun- <guortun-@student.42madrid.com    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2022/08/09 17:37:51 by guortun-          #+#    #+#             */
-/*   Updated: 2022/08/09 17:58:29 by guortun-         ###   ########.fr       */
+/*   Created: 2023/09/19 19:08:26 by guortun-          #+#    #+#             */
+/*   Updated: 2023/09/19 19:09:15 by guortun-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "libft.h"
 
-static int		count_wd(char *str, char c)
+static char	**ft_alloc_split(char const *s, char c)
 {
-	int		i;
-	int		nb;
+	size_t	i;
+	char	**split;
+	size_t	total;
 
 	i = 0;
-	nb = 0;
-	while (str[i])
+	total = 0;
+	while (s[i])
 	{
-		while (str[i] == c)
-			i++;
-		if (str[i] && str[i] != c)
-		{
-			nb++;
-			while (str[i] && str[i] != c)
-				i++;
-		}
-	}
-	return (nb);
-}
-
-static int		*word_mark(char *str, char c, int nb)
-{
-	int		i;
-	int		a;
-	int		*tab;
-
-	i = 0;
-	a = 0;
-	tab = malloc(sizeof(int) * nb);
-	while (str[i] && (a < nb))
-	{
-		if (str[i] == c)
-			while (str[i] == c)
-				i++;
-		if (str[i] != c)
-		{
-			tab[a++] = i;
-			while (str[i] != c)
-				i++;
-		}
-	}
-	return (tab);
-}
-
-static char		*malloc_word(char *str, char c)
-{
-	int		i;
-	char	*word;
-
-	i = 0;
-	if (!str[0])
-		return (NULL);
-	while (str[i] && str[i] != c)
-		i++;
-	word = malloc(sizeof(char) * (i + 1));
-	if (word == NULL)
-		return (NULL);
-	word[i] = '\0';
-	ft_memmove(word, str, i);
-	return (word);
-}
-
-static char		**make_tab(char *str, char c)
-{
-	int		i;
-	int		count;
-	int		*mark;
-	char	**tab;
-
-	i = 0;
-	count = count_wd(str, c);
-	if (!(tab = malloc(sizeof(char *) * (count + 1))))
-		return (NULL);
-	tab[count] = NULL;
-	if (!(mark = word_mark(str, c, count)))
-		return (NULL);
-	while (i < count)
-	{
-		if (!(tab[i] = malloc_word(&str[mark[i]], c)))
-		{
-			free(mark);
-			ft_free_tab(&tab);
-			return (NULL);
-		}
+		if (s[i] == c)
+			total++;
 		i++;
 	}
-	free(mark);
-	return (tab);
+	split = (char **)malloc(sizeof(s) * (total + 2));
+	if (!split)
+		return (NULL);
+	return (split);
 }
 
-char			**ft_split(char const *s, char c)
+void	*ft_free_all_split_alloc(char **split, size_t elts)
 {
-	int		i;
-	char	*set;
+	size_t	i;
 
-	if (s)
+	i = 0;
+	while (i < elts)
 	{
-		i = 0;
-		if (!(set = malloc(sizeof(char) * 2)))
-			return (NULL);
-		set[0] = c;
-		set[1] = '\0';
-		free(set);
-		return (make_tab((char *)s, c));
+		free(split[i]);
+		i++;
 	}
+	free(split);
 	return (NULL);
+}
+
+static void	*ft_split_range(char **split, char const *s, t_split_next *st,
+		t_split_next *lt)
+{
+	split[lt->length] = ft_substr(s, st->start, st->length);
+	if (!split[lt->length])
+		return (ft_free_all_split_alloc(split, lt->length));
+	lt->length++;
+	return (split);
+}
+
+static void	*ft_split_by_char(char **split, char const *s, char c)
+{
+	size_t			i;
+	t_split_next	st;
+	t_split_next	lt;
+
+	i = 0;
+	lt.length = 0;
+	lt.start = 0;
+	while (s[i])
+	{
+		if (s[i] == c)
+		{
+			st.start = lt.start;
+			st.length = (i - lt.start);
+			if (i > lt.start && !ft_split_range(split, s, &st, &lt))
+				return (NULL);
+			lt.start = i + 1;
+		}
+		i++;
+	}
+	st.start = lt.start;
+	st.length = (i - lt.start);
+	if (i > lt.start && i > 0 && !ft_split_range(split, s, &st, &lt))
+		return (NULL);
+	split[lt.length] = 0;
+	return (split);
+}
+
+char	**ft_split(char const *s, char c)
+{
+	char	**split;
+
+	if (!(split = ft_alloc_split(s, c)))
+		return (NULL);
+	if (!ft_split_by_char(split, s, c))
+		return (NULL);
+	return (split);
 }
